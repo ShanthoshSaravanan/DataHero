@@ -282,9 +282,25 @@ footer{padding:17px 60px;background:#050F08;border-top:1px solid rgba(255,255,25
   .vh-stat-val{font-size:16px}
   .vh-stats{gap:10px}
 }
-#vhUnmute{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,102,51,0.92);color:#fff;border:1px solid rgba(0,200,80,0.35);padding:13px 32px;font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);transition:all .25s ease;animation:fup .5s 1.4s ease both;white-space:nowrap;box-shadow:0 4px 24px rgba(0,102,51,0.3)}
-#vhUnmute:hover{background:#006633;transform:translateX(-50%) translateY(-2px);box-shadow:0 8px 32px rgba(0,102,51,0.5)}
-#vhUnmute.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(8px)}
+#vhSoundWrap{position:absolute;bottom:0;left:0;right:0;top:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);animation:fup .5s .4s ease both}
+#vhPromptBox{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:0 24px}
+.vh-funny{font-family:"Playfair Display",serif;font-size:clamp(15px,1.8vw,22px);font-style:italic;color:#fff;line-height:1.5;text-shadow:0 2px 16px rgba(0,0,0,.8)}
+.vh-funny em{color:#006633;font-style:normal}
+.vh-prompt-sub{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-top:2px}
+#vhSkip{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.25);background:none;border:none;cursor:pointer;margin-top:8px;transition:color .2s}
+#vhSkip:hover{color:rgba(255,255,255,.6)}
+#vhSoundWrap.hidden{opacity:0;pointer-events:none;transition:opacity .5s ease}
+#vhPlayBtn{width:62px;height:62px;border-radius:50%;background:rgba(0,102,51,0.92);border:2px solid rgba(0,200,80,0.45);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all .28s ease;backdrop-filter:blur(14px);box-shadow:0 4px 28px rgba(0,102,51,0.45);outline:none}
+#vhPlayBtn::before{content:'';position:absolute;inset:-10px;border-radius:50%;border:1.5px solid rgba(0,200,80,0.28);animation:vhRing 2.2s ease-in-out infinite}
+#vhPlayBtn::after{content:'';position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(0,200,80,0.13);animation:vhRing 2.2s ease-in-out infinite .5s}
+@keyframes vhRing{0%,100%{transform:scale(1);opacity:1}60%{transform:scale(1.18);opacity:0}}
+#vhPlayBtn:hover{background:#006633;transform:scale(1.12);box-shadow:0 8px 36px rgba(0,102,51,0.65)}
+#vhPlayBtn svg{width:24px;height:24px;fill:#fff;margin-left:4px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.4))}
+#vhVolBtn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .22s ease;outline:none;backdrop-filter:blur(8px)}
+#vhVolBtn:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3)}
+#vhVolBtn svg{width:16px;height:16px;fill:rgba(255,255,255,0.7)}
+.vh-btn-row{display:flex;align-items:center;gap:14px}
+#vhPlayLbl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.38)}
 /* === END VIDEO HERO === */
 </style>
 </head>
@@ -332,7 +348,22 @@ footer{padding:17px 60px;background:#050F08;border-top:1px solid rgba(255,255,25
     </div>
   </div>
   <div class="vh-progress"><div class="vh-progress-fill" id="vhProgressFill" style="background:linear-gradient(to right,rgba(0,102,51,0.4),#006633)"></div></div>
-  <button id="vhUnmute">&#128266; Tap for sound</button>
+  <div id="vhSoundWrap">
+    <div id="vhPromptBox">
+      <p class="vh-funny">Recruiters who clicked play<br>made <em>significantly</em> better hiring decisions. 📊</p>
+      <p class="vh-prompt-sub">Totally unverified. But also — probably true. Hire your Data Hero now!!</p>
+    </div>
+    <div class="vh-btn-row">
+      <button id="vhPlayBtn" aria-label="Play audio intro">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="vhVolBtn" aria-label="Volume">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      </button>
+    </div>
+    <span id="vhPlayLbl">Play My Intro</span>
+    <button id="vhSkip">Skip &rarr;</button>
+  </div>
 </div>
 
 <nav><div class="nlogo">Shanthosh<span>.</span></div>
@@ -448,39 +479,55 @@ var obs=new IntersectionObserver(function(entries){entries.forEach(function(e,i)
   if(!vh||!fg)return;
   var VH_DURATION=10000;
   var started=false;
+  var played=false;
+
+  function dismissVH(){
+    vh.classList.remove('vh-show');
+    vh.classList.add('vh-hide');
+    setTimeout(function(){if(fg)fg.pause();if(bg)bg.pause();},1000);
+  }
+
   function startVH(){
     if(started)return;
     started=true;
     vh.classList.add('vh-show');
-    fg.currentTime=0;
-    fg.play().catch(function(){});
+    // bg plays muted for ambient effect only
     if(bg){bg.currentTime=0;bg.play().catch(function(){});}
-    var btn=document.getElementById('vhUnmute');
-    var unmuteReady=false;
-    function doUnmute(){
-      if(unmuteReady)return;unmuteReady=true;
-      fg.muted=false;fg.volume=1;
+    // fg stays paused — user must click play
+    fg.pause();
+    fg.muted=true;
+
+    var wrap=document.getElementById('vhSoundWrap');
+    var playBtn=document.getElementById('vhPlayBtn');
+    var volBtn=document.getElementById('vhVolBtn');
+    var skipBtn=document.getElementById('vhSkip');
+
+    function doPlay(){
+      if(played)return;
+      played=true;
+      fg.muted=false;
+      fg.volume=1;
+      fg.currentTime=0;
       fg.play().catch(function(){});
-      if(btn)btn.classList.add('hidden');
+      if(wrap){wrap.classList.add('hidden');setTimeout(function(){wrap.style.display='none';},500);}
+      // Progress bar starts from click
+      var t0=Date.now();
+      (function tick(){
+        if(!bar)return;
+        var p=Math.min(100,((Date.now()-t0)/VH_DURATION)*100);
+        bar.style.width=p+'%';
+        if(p<100)requestAnimationFrame(tick);
+      })();
+      setTimeout(dismissVH, VH_DURATION);
     }
-    if(btn){btn.addEventListener('click',function(e){e.stopPropagation();doUnmute();});}
-    ['click','touchstart','keydown'].forEach(function(ev){
-      document.addEventListener(ev,doUnmute,{once:true,passive:true});
-    });
-    var t0=Date.now();
-    (function tick(){
-      if(!bar)return;
-      var p=Math.min(100,((Date.now()-t0)/VH_DURATION)*100);
-      bar.style.width=p+'%';
-      if(p<100)requestAnimationFrame(tick);
-    })();
-    setTimeout(function(){
-      vh.classList.remove('vh-show');
-      vh.classList.add('vh-hide');
-      setTimeout(function(){if(fg)fg.pause();if(bg)bg.pause();},1000);
-    },VH_DURATION);
+
+    if(playBtn){playBtn.addEventListener('click',function(e){e.stopPropagation();doPlay();});}
+    if(volBtn){volBtn.addEventListener('click',function(e){e.stopPropagation();doPlay();});}
+    if(skipBtn){skipBtn.addEventListener('click',function(e){e.stopPropagation();dismissVH();});}
   }
+
   setTimeout(startVH,4400);
+
   if(fg&&bg){
     fg.addEventListener('timeupdate',function(){
       if(Math.abs(bg.currentTime-fg.currentTime)>0.5)bg.currentTime=fg.currentTime;
